@@ -11,6 +11,7 @@ const char KEY_MAP[4][4] = {
 };
 
 
+
 MatrixKeypad::MatrixKeypad() {
   lastScanTime = 0;
   for(int r=0; r<4; r++) {
@@ -72,4 +73,16 @@ bool MatrixKeypad::isJustPressed(char key) {
     }
   }
   return false;
+}
+
+char MatrixKeypad::getPressedKey() {
+  for(int r=0; r<4; r++) {
+    for(int c=0; c<4; c++) {
+      // Sprawdź czy klawisz jest wciśnięty TERAZ i NIE BYŁ wciśnięty WCZEŚNIEJ
+      if (currentStates[r][c] && !previousStates[r][c]) {
+        return KEY_MAP[r][c]; // Zwróć znak (np. '1', 'A')
+      }
+    }
+  }
+  return 0; // Jeśli nic nie znaleziono, zwróć 0 (null)
 }

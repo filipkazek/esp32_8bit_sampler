@@ -17,6 +17,7 @@ class MatrixKeypad {
     void update();
     bool isKeyDown(char key);
     bool isJustPressed(char key);
+    char getPressedKey();
 };
 
 #endif
