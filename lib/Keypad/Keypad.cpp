@@ -78,11 +78,10 @@ bool MatrixKeypad::isJustPressed(char key) {
 char MatrixKeypad::getPressedKey() {
   for(int r=0; r<4; r++) {
     for(int c=0; c<4; c++) {
-      // Sprawdź czy klawisz jest wciśnięty TERAZ i NIE BYŁ wciśnięty WCZEŚNIEJ
       if (currentStates[r][c] && !previousStates[r][c]) {
-        return KEY_MAP[r][c]; // Zwróć znak (np. '1', 'A')
+        return KEY_MAP[r][c];
       }
     }
   }
-  return 0; // Jeśli nic nie znaleziono, zwróć 0 (null)
+  return 0;
 }
