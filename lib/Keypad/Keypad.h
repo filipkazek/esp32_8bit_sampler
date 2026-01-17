@@ -9,7 +9,9 @@ class MatrixKeypad {
     bool previousStates[4][4];
     
     unsigned long lastScanTime;
-    const unsigned long debounceTime = 20; 
+    const unsigned long debounceTime = 10; 
+    bool currentBtnStates[4];
+    bool previousBtnStates[4];
 
   public:
     MatrixKeypad();
@@ -17,7 +19,8 @@ class MatrixKeypad {
     void update();
     bool isKeyDown(char key);
     bool isJustPressed(char key);
-    char getPressedKey();
+    byte getPressedKey();
+    bool isButtonJustPressed(int buttonIndex);
 };
 
 #endif
