@@ -63,21 +63,7 @@ volatile bool cmdControl = false;
 bool recordingStarted = false;
 uint32_t silenceCounter = 0;
 char currentTrack = 0;
-volatile int globalBPM = 120;
-void processPlaying(struct Sample *pSample, int32_t *output){
-  if(pSample->isPlaying){
-    for(int i = 0; i< CHUNK_SIZE; i++){
-        if(pSample->playCursor < pSample->length){
-            output[i] = ((int32_t)pSample->data[pSample->playCursor] << OUTPUT_SHIFT);
-            pSample->playCursor++;
-        } else {
-           pSample->isPlaying = false;
-           output[i] = 0;
-        }
-    }
-  }
-}
-
+volatile int globalBPM = 250;
 
 void processRecording(struct Sample *pSample, int32_t *input, size_t bytesIn){
     if(pSample->isRecording){
@@ -127,9 +113,9 @@ void AudioTask(void * parameters)
   size_t bytesIn, bytesOut;
   int32_t inputBuffer[CHUNK_SIZE];
   int32_t outputBuffer[CHUNK_SIZE];
-  uint16_t samplesPerStep = (22050 * 60) / (globalBPM * 4);
+  uint16_t samplesCount = 0;
   unsigned char stepIndex = 0;
-
+  int16_t samplesPerStep;
   for(int i = 0; i < NUMBER_OF_SAMPLES; i++){
      tracks[i].isPlaying = false;
      tracks[i].isRecording = false;
@@ -138,6 +124,8 @@ void AudioTask(void * parameters)
   }
 
   while(1){
+    uint16_t samplesPerStep = (22050 * 60) / (globalBPM * 4);
+
     if(cmdRecording){
       cmdRecording = false;
       recordingStarted = false;
@@ -146,16 +134,41 @@ void AudioTask(void * parameters)
       tracks[currentTrack].recCursor = 0;
       tracks[currentTrack].length = 0;
     }
-    if(cmdPlaying) {
-      cmdPlaying = false;
-      if(tracks[currentTrack].length > 0){
-        tracks[currentTrack].isPlaying = true;
-        tracks[currentTrack].playCursor = 0;
-      }
-    }
     i2s_read(I2S_NUM_0, &inputBuffer, sizeof(inputBuffer), &bytesIn, portMAX_DELAY);
     memset(outputBuffer, 0, sizeof(outputBuffer));
-    processPlaying(&tracks[currentTrack], outputBuffer);
+
+    for(int i = 0; i < CHUNK_SIZE; i++){
+      samplesCount++;
+      if(samplesCount >= samplesPerStep){
+        samplesCount = 0;
+        stepIndex = (stepIndex + 1) % 8;
+      
+      for(int j = 0; j<NUMBER_OF_SAMPLES;j++){
+        if(tracks[j].steps[stepIndex] && tracks[j].length > 0){
+          tracks[j].playCursor = 0;
+          tracks[j].isPlaying = true;
+        }
+      }
+    }
+
+    int32_t mix = 0;
+      
+      for(int j = 0; j < NUMBER_OF_SAMPLES; j++) {
+         if(tracks[j].isPlaying) {
+            if(tracks[j].playCursor < tracks[j].length) {
+               mix += tracks[j].data[tracks[j].playCursor];
+               if (mix > 127) mix = 127;
+               if (mix < -128) mix = -128;
+               tracks[j].playCursor++;
+            } else {
+               tracks[j].isPlaying = false; 
+            }
+         }
+      }
+      
+      outputBuffer[i] = mix << OUTPUT_SHIFT;
+      
+    }
     processRecording(&tracks[currentTrack], inputBuffer, bytesIn);
     i2s_write(I2S_NUM_0, &outputBuffer, sizeof(outputBuffer), &bytesOut, portMAX_DELAY);
   }
@@ -170,8 +183,6 @@ void changeBPM(int amount) {
 
 
 void setup() {
-Serial.begin(115200);
-Serial.println("test");
 keypad.begin();
   xTaskCreatePinnedToCore(AudioTask, NULL , 10000, NULL, 10, NULL, 0);
 }
@@ -184,10 +195,11 @@ void loop() {
       tracks[currentTrack].steps[i] = !tracks[currentTrack].steps[i];
     }
   }
+  if(keypad.isJustPressed(14)) memset(tracks[currentTrack].steps, 0, sizeof(tracks[currentTrack].steps));
   if(keypad.isButtonJustPressed(2)) changeBPM(-5);
   if(keypad.isButtonJustPressed(3)) changeBPM(5);
   if(keypad.isButtonJustPressed(1)) cmdRecording = true;
-  if(keypad.isButtonJustPressed(0)) cmdPlaying = true;
+  if(keypad.isButtonJustPressed(0)) cmdPlaying = !cmdPlaying;
   if(keypad.isJustPressed(13)) currentTrack = (currentTrack + 1) % 4;
   delay(10);
 
