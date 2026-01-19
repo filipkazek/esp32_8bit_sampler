@@ -10,7 +10,7 @@ const byte KEY_MAP[4][4] = {
   {13, 14, 15, 16 }
 };
 
-const byte BTN_PINS[4] = {22, 15, 16, 4};
+const byte BTN_PINS[4] = {22, 15};
 
 MatrixKeypad::MatrixKeypad() {
   lastScanTime = 0;
@@ -97,6 +97,11 @@ byte MatrixKeypad::getPressedKey() {
 }
 
 bool MatrixKeypad::isButtonJustPressed(int buttonIndex) {
-    if(buttonIndex < 0 || buttonIndex > 3) return false;
+    if(buttonIndex < 0 || buttonIndex > 1) return false;
     return (currentBtnStates[buttonIndex] && !previousBtnStates[buttonIndex]);
+}
+
+bool MatrixKeypad::isButtonDown(int buttonIndex){
+    if(buttonIndex < 0 || buttonIndex > 1) return false;
+    return currentBtnStates[buttonIndex];
 }

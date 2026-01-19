@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <driver/i2s.h>
 #include <Keypad.h>
+#include <ESP32Encoder.h>
 #define I2S_WS      5  
 #define I2S_SCK     19  
 #define I2S_SD_IN   18  
@@ -19,9 +20,15 @@
 
 #define BUTTON_1 22
 #define BUTTON_2 15
-#define BUTTON_3 16
-#define BUTTON_4 4
 
+
+#define ENC_CK 34
+#define ENC_DT 35
+#define ENC_SW 17
+
+#define SERIAL_IN 2
+#define SERIAL_CK 4
+#define SERIAL_LATCH 16
 const float PITCH_TABLE[25] = {0.500, 0.530, 0.561, 0.595, 0.630, 0.667, 0.707, 0.749, 0.794, 0.841, 0.891, 0.944, 1.000,
   1.059, 1.122, 1.189, 1.260, 1.335, 1.414, 1.498, 1.587, 1.682, 1.782, 1.888, 2.000};
   
@@ -48,7 +55,7 @@ const i2s_pin_config_t pin_config = {
 
 struct Step{
   bool active;
-  float pitch;
+  uint8_t pitch;
 };
 
 struct Sample {
@@ -71,7 +78,7 @@ bool cmdControl = false;
 bool recordingStarted = false;
 uint32_t silenceCounter = 0;
 char currentTrack = 0;
-char globalBPM = 250;
+unsigned char globalBPM = 120;
 
 void processRecording(struct Sample *pSample, int32_t *input, size_t bytesIn){
     if(pSample->isRecording){
@@ -123,18 +130,16 @@ void AudioTask(void * parameters)
   int32_t outputBuffer[CHUNK_SIZE];
   uint16_t samplesCount = 0;
   uint8_t stepIndex = 0;
-  int16_t samplesPerStep;
-  
+  int16_t samplesPerStep; 
   for(uint8_t i = 0; i < NUMBER_OF_SAMPLES; i++){
      tracks[i].isPlaying = false;
      tracks[i].isRecording = false;
      tracks[i].playCursor = 0;
      tracks[i].recCursor = 0;
-      for(uint8_t k; k<7; k++){
-        tracks[i].steps[k].pitch = 1.0;
-      }
+     for(uint8_t g = 0; g < 8; g++){
+      tracks[i].steps[g].pitch = 12;
+     }
   }
-
   while(1){
     uint16_t samplesPerStep = (22050 * 60) / (globalBPM * 4);
 
@@ -159,7 +164,7 @@ void AudioTask(void * parameters)
         if(tracks[j].steps[stepIndex].active && tracks[j].length > 0){
           tracks[j].playCursor = 0;
           tracks[j].isPlaying = true;
-          tracks[j].currentSpeed = tracks[j].steps[stepIndex].pitch;
+          tracks[j].currentSpeed = PITCH_TABLE[tracks[j].steps[stepIndex].pitch];
            }
          }
        }
@@ -192,25 +197,40 @@ void changeBPM(int amount) {
 }
 
 
-void setup() {
-keypad.begin();
+ ESP32Encoder encoder;
+ 
+ void setup() {
+  keypad.begin();
   xTaskCreatePinnedToCore(AudioTask, NULL , 10000, NULL, 10, NULL, 0);
+   ESP32Encoder::useInternalWeakPullResistors = puType::up;
+  encoder.attachHalfQuad(ENC_DT, ENC_CK);
+  encoder.setCount(0);
+  pinMode(ENC_SW, INPUT_PULLUP);
+  encoder.setCount(120);
 }
-
+ int32_t rawEncoder;
 void loop() {
-
-  keypad.update();
+   keypad.update();
   for(uint8_t i=0; i<8; i++){
     if(keypad.isJustPressed(i+1)){
       tracks[currentTrack].steps[i].active = !tracks[currentTrack].steps[i].active;
     }
   }
   if(keypad.isJustPressed(14)) memset(tracks[currentTrack].steps, 0, sizeof(tracks[currentTrack].steps));
-  if(keypad.isButtonJustPressed(2)) changeBPM(-5);
-  if(keypad.isButtonJustPressed(3)) changeBPM(5);
   if(keypad.isButtonJustPressed(1)) cmdRecording = true;
   if(keypad.isButtonJustPressed(0)) cmdControl = !cmdControl;
   if(keypad.isJustPressed(13)) currentTrack = (currentTrack + 1) % 4;
+  rawEncoder = (int32_t)encoder.getCount();
+  if (rawEncoder < 30) {
+      rawEncoder = 30;
+      encoder.setCount(30);
+  } 
+  else if (rawEncoder > 250) {
+      rawEncoder = 250;
+      encoder.setCount(250);
+  }
+  if(globalBPM != rawEncoder) {
+      globalBPM = rawEncoder;
+  }
   delay(10);
-
 }

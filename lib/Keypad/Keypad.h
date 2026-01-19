@@ -21,6 +21,7 @@ class MatrixKeypad {
     bool isJustPressed(char key);
     byte getPressedKey();
     bool isButtonJustPressed(int buttonIndex);
+    bool isButtonDown(int buttonIndex);
 };
 
 #endif
