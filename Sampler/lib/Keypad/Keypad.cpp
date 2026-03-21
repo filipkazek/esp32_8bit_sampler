@@ -10,7 +10,7 @@ const byte KEY_MAP[4][4] = {
   {13, 14, 15, 16 }
 };
 
-const byte BTN_PINS[4] = {22, 15};
+const byte BTN_PINS[3] = {22, 21,19};
 
 MatrixKeypad::MatrixKeypad() {
   lastScanTime = 0;
@@ -20,7 +20,7 @@ MatrixKeypad::MatrixKeypad() {
       previousStates[r][c] = false;
     }
   }
-  for(int i=0; i<4; i++) {
+  for(int i=0; i<3; i++) {
       currentBtnStates[i] = false;
       previousBtnStates[i] = false;
   }
@@ -31,6 +31,8 @@ void MatrixKeypad::begin() {
   for (int i = 0; i < 4; i++) {
     pinMode(ROW_PINS[i], INPUT);        
     pinMode(COL_PINS[i], INPUT_PULLUP);
+  }
+    for (int i = 0; i < 3; i++) {
     pinMode(BTN_PINS[i], INPUT_PULLUP);
   }
 }
@@ -57,7 +59,7 @@ void MatrixKeypad::update() {
     digitalWrite(ROW_PINS[r], HIGH); 
     pinMode(ROW_PINS[r], INPUT); 
   }
-  for(int i=0; i<4; i++) {
+  for(int i=0; i<3; i++) {
       previousBtnStates[i] = currentBtnStates[i];
       currentBtnStates[i] = !digitalRead(BTN_PINS[i]); 
   }
@@ -97,11 +99,11 @@ byte MatrixKeypad::getPressedKey() {
 }
 
 bool MatrixKeypad::isButtonJustPressed(int buttonIndex) {
-    if(buttonIndex < 0 || buttonIndex > 1) return false;
+    if(buttonIndex < 0 || buttonIndex > 2) return false;
     return (currentBtnStates[buttonIndex] && !previousBtnStates[buttonIndex]);
 }
 
 bool MatrixKeypad::isButtonDown(int buttonIndex){
-    if(buttonIndex < 0 || buttonIndex > 1) return false;
+    if(buttonIndex < 0 || buttonIndex > 2) return false;
     return currentBtnStates[buttonIndex];
 }

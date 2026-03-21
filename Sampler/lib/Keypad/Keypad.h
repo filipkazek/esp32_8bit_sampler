@@ -10,8 +10,8 @@ class MatrixKeypad {
     
     unsigned long lastScanTime;
     const unsigned long debounceTime = 10; 
-    bool currentBtnStates[4];
-    bool previousBtnStates[4];
+    bool currentBtnStates[3];
+    bool previousBtnStates[3];
 
   public:
     MatrixKeypad();
